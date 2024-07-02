@@ -2,6 +2,7 @@ from dateutil import parser
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import re
+import time
 
 @dataclass
 class Agent:
@@ -123,10 +124,11 @@ def had_activity(sf, account, cutOff):
 
 
 def touched_accounts(sf, cutOff, agents_dict):
-    # Used to see Object fields
-    account_metadata = sf.Task.describe()
-    # Extract field names
-    field_names = [field['name'] for field in account_metadata['fields']]
+    # # Used to see Object fields
+    # account_metadata = sf.Task.describe()
+    # # Extract field names
+    # field_names = [field['name'] for field in account_metadata['fields']]
+
     formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -165,8 +167,11 @@ def touched_accounts(sf, cutOff, agents_dict):
             """
 
         link_records = sf.query(linkQuery)["records"]
+        time.sleep(0.1)
         non_cust_record_count = sf.query(countNonCustQuery)['totalSize']
+        time.sleep(0.1)
         cust_record_count = sf.query(countCustQuery)['totalSize']
+        time.sleep(0.1)
         agent_counts[agent] = {
             "total_count": non_cust_record_count + cust_record_count,
             "customer_count": cust_record_count,

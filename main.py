@@ -14,11 +14,41 @@ from googleapiclient.errors import HttpError
 import pandas as pd
 from datetime import datetime
 import time
+from gspread.exceptions import APIError
+
 
 def first_empty_row(sheet):
     str_list = list(filter(None, sheet.col_values(1)))  # Get all values in column A
     return len(str_list) + 1
 
+
+def exponential_backoff(attempt):
+    if attempt == 0:
+        return 1
+    elif attempt == 1:
+        return 2
+    else:
+        return (attempt ** 2)
+
+def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            #end_row = start_row + (len(values) // 6) - 1  # Calculate the end row
+            sheet.batch_update([{
+                'range': f'A{start_row}:F{end_row}',
+                'values': [[cell[2] for cell in values[i:i+6]] for i in range(0, len(values), 6)]
+            }])
+            return
+        except APIError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                attempt += 1
+                if attempt == max_attempts:
+                    raise
+                sleep_time = exponential_backoff(attempt)
+                time.sleep(sleep_time)
+            else:
+                raise
 
 
 if __name__ == "__main__":
@@ -31,11 +61,6 @@ if __name__ == "__main__":
         agents_data = json.load(file)
 
     sheet = sheets_login()
-    # Get all the data from the sheet and group it up by agent
-    # data = sheet.get_all_values()
-    # sheet.update_cell(row_idx, 9, contact_count)
-    # sheet.update_cell(row_idx, 10, str(last_attempt))
-    # sheet.update_cell(row_idx, 11, sf_converted)
 
     login_time = time.time()
 
@@ -60,30 +85,30 @@ if __name__ == "__main__":
 
     get_contacts_time = time.time()
 
+    
     row = first_empty_row(sheet)
+    start_row = row
     headers = sheet.row_values(1)
  
+
+
+    # Prepare batch update
+    batch_update = []
+
     for agent, info in agent_contact_counts.items():
-        col = headers.index("Date") + 1
-        sheet.update_cell(row, col, today)
+        row_data = [
+            (row, headers.index("Date") + 1, today),
+            (row, headers.index("Agent") + 1, agent),
+            (row, headers.index("Total Count") + 1, info["total_count"]),
+            (row, headers.index("Customer Count") + 1, info["customer_count"]),
+            (row, headers.index("Non Customer Count") + 1, info["non_customer_count"]),
+            (row, headers.index("Links") + 1, ", ".join(info["links"]))
+        ]
+        batch_update.extend(row_data)
+        row += 1
 
-        col = headers.index("Agent") + 1
-        sheet.update_cell(row, col, agent)
-
-        col = headers.index("Total Count") + 1
-        sheet.update_cell(row, col, info["total_count"])
-
-        col = headers.index("Customer Count") + 1
-        sheet.update_cell(row, col, info["customer_count"])
-
-        col = headers.index("Non Customer Count") + 1
-        sheet.update_cell(row, col, info["non_customer_count"])
-
-        col = headers.index("Links") + 1
-        links_str = ", ".join(info["links"])
-        sheet.update_cell(row, col, links_str)
-
-        row = row + 1
+    # Perform batch update with retry
+    update_sheet_with_retry(sheet, batch_update, start_row, row-1)
 
     update_sheet_time = time.time()
 
