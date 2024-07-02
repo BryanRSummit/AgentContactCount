@@ -1,0 +1,4 @@
+*.json
+*.key
+/env
+/__pycache__
