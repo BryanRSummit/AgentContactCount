@@ -34,7 +34,6 @@ def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
     attempt = 0
     while attempt < max_attempts:
         try:
-            #end_row = start_row + (len(values) // 6) - 1  # Calculate the end row
             sheet.batch_update([{
                 'range': f'A{start_row}:F{end_row}',
                 'values': [[cell[2] for cell in values[i:i+6]] for i in range(0, len(values), 6)]
@@ -80,7 +79,8 @@ if __name__ == "__main__":
 
     # Sales Season Start
     cutoff_date = parser.parse("6-1-24")
-    today = str(datetime.today())
+    #today = str(datetime.today())
+    today = datetime.today().strftime("%Y-%m-%d")
     agent_contact_counts = touched_accounts(sf, cutoff_date, agents_dict)
 
     get_contacts_time = time.time()
