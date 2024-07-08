@@ -134,50 +134,109 @@ def touched_accounts(sf, cutOff, agents_dict):
 
     agent_counts = {}
     for agent, info in agents_dict.items():
-        ids = [info["id"]]
-        ids.extend(x["id"] for x in info["accountmanagers"])
-        formatted_ids = ','.join(f"'{id}'" for id in ids)
-        countNonCustQuery = f"""
-                SELECT COUNT()
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Account.Type != 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-                """
-        
-        countCustQuery = f"""
-                SELECT COUNT()
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Account.Type = 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-                """
-        
-        linkQuery = f"""
-                SELECT 
-                    What.Id,
-                    What.Name,
-                    What.Type
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """
+        agentId = info["id"]
+        amIds = ", ".join(f"{x['id']}" for x in info["accountmanagers"])
 
-        link_records = sf.query(linkQuery)["records"]
-        time.sleep(0.1)
-        non_cust_record_count = sf.query(countNonCustQuery)['totalSize']
-        time.sleep(0.1)
-        cust_record_count = sf.query(countCustQuery)['totalSize']
-        time.sleep(0.1)
+        # --------------------------------------START NON_CUSTOMERS-----------------------------
+        # Query for agent's tasks
+        agent_tasks_non = sf.query(f"""
+            SELECT Id, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_non = {task['WhatId'] for task in agent_tasks_non['records']}
+        test = f"('{amIds}')"
+        # Query for account managers' tasks
+        am_tasks_non = sf.query(f"""
+            SELECT Id, WhatId
+            FROM Task
+            WHERE (OwnerId IN ('{amIds}') OR OwnerId = '')
+            AND CreatedDate >= {formatted_date}
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+#       SELECT Id, WhatId
+#       FROM Task
+#       WHERE (OwnerId IN ('') OR OwnerId = '')
+#       AND CreatedDate >= 2024-06-01T00:00:00Z
+#       AND Account.Type != 'Customer'
+#       AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+
+        agent_task_count_non = len(agent_account_ids_non)
+
+        am_task_count_non = 0
+
+        for task in am_tasks_non['records']:
+            if task['WhatId'] in agent_account_ids_non:
+                am_task_count_non += 1
+                if task['AccountId']:
+                    agent_account_ids_non.add(task['AccountId'])
+
+        #remove duplicates
+        agent_account_ids_non = list(set(agent_account_ids_non))
+
+
+        total_non_count = agent_task_count_non + am_task_count_non
+        # --------------------------------------END NON_CUSTOMERS-------------------------------------------------
+
+        #---------------------------------------------------START CUSTOMERS----------------------------------------------------------------
+        # Query for agent's tasks
+        agent_tasks_cust = sf.query(f"""
+            SELECT Id, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_cust = {task['WhatId'] for task in agent_tasks_cust['records']}
+        
+
+        # Query for account managers' tasks
+        am_tasks_cust = sf.query(f"""
+            SELECT Id, WhatId
+            FROM Task
+            WHERE (OwnerId IN ('{amIds}') OR OwnerId = '')
+            AND CreatedDate >= {formatted_date}
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+        agent_task_count_cust = len(agent_account_ids_cust)
+
+        am_task_count_cust = 0
+
+        for task in am_tasks_cust['records']:
+            if task['WhatId'] in agent_account_ids_cust:
+                am_task_count_cust += 1
+                if task['AccountId']:
+                    agent_account_ids_cust.add(task['AccountId'])
+
+        #remove duplicates
+        agent_account_ids_cust = list(set(agent_account_ids_cust))
+
+
+        total_cust_count = agent_task_count_cust + am_task_count_cust
+
+        #---------------------------------------------------END CUSTOMERS----------------------------------------------------------------
+
+        all_links = list(set(agent_account_ids_non + agent_account_ids_cust))
+
         agent_counts[agent] = {
-            "total_count": non_cust_record_count + cust_record_count,
-            "customer_count": cust_record_count,
-            "non_customer_count": non_cust_record_count,
-            "links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x['What']['Id']}/view" for x in link_records]
+            "total_count": total_cust_count + total_non_count,
+            "customer_count": total_cust_count,
+            "non_customer_count": total_non_count,
+            "links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in all_links]
         }
+
 
     return agent_counts
 
