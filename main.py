@@ -35,8 +35,8 @@ def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
     while attempt < max_attempts:
         try:
             sheet.batch_update([{
-                'range': f'A{start_row}:F{end_row}',
-                'values': [[cell[2] for cell in values[i:i+6]] for i in range(0, len(values), 6)]
+                'range': f'A{start_row}:K{end_row}',
+                'values': [[cell[2] for cell in values[i:i+11]] for i in range(0, len(values), 11)]
             }])
             return
         except APIError as e:
@@ -102,14 +102,20 @@ if __name__ == "__main__":
             (row, headers.index("Total Count") + 1, info["total_count"]),
             (row, headers.index("Customer Count") + 1, info["customer_count"]),
             (row, headers.index("Non Customer Count") + 1, info["non_customer_count"]),
-            (row, headers.index("AMs Count") + 1, info["ams_count"]),
+            (row, headers.index("Agent Non Count") + 1, info["agent_count_non"]),
+            (row, headers.index("Agent Cust Count") + 1, info["agent_count_cust"]),
+            (row, headers.index("AMs Total Count") + 1, info["ams_total_count"]),
+            (row, headers.index("AMs Non Count") + 1, info["am_non_count"]),
+            (row, headers.index("AMs Cust Count") + 1, info["am_cust_count"]),
             (row, headers.index("Links") + 1, ", ".join(info["links"]))
         ]
+
+
         batch_update.extend(row_data)
         row += 1
 
     # Perform batch update with retry
-    update_sheet_with_retry(sheet, batch_update, start_row, row-1)
+    update_sheet_with_retry(sheet, batch_update, start_row, row)
 
     update_sheet_time = time.time()
 
