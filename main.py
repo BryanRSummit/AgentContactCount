@@ -102,6 +102,7 @@ if __name__ == "__main__":
             (row, headers.index("Total Count") + 1, info["total_count"]),
             (row, headers.index("Customer Count") + 1, info["customer_count"]),
             (row, headers.index("Non Customer Count") + 1, info["non_customer_count"]),
+            (row, headers.index("AMs Count") + 1, info["ams_count"]),
             (row, headers.index("Links") + 1, ", ".join(info["links"]))
         ]
         batch_update.extend(row_data)

@@ -132,7 +132,7 @@ def touched_accounts(sf, cutOff, agents_dict):
     # Used to see Object fields
     account_metadata = sf.Account.describe()
     # Extract field names
-    field_names = [field['name'] for field in account_metadata['fields']]
+    field_names = [{"name": field['name'], "label": field["label"]} for field in account_metadata['fields']]
 
     # Load AM Info to check for multiple agents
     with open('am_ids.json', 'r') as file:
@@ -187,13 +187,14 @@ def touched_accounts(sf, cutOff, agents_dict):
 
             agent_task_count_non = agent_tasks_non["totalSize"]
 
+            # If agent is assigned to the account then we will count the AM's activity on the account, 
+            # Otherwise only agent activity will be counted. That's the only relationship we can use 
+            # to link AMs with multiple agents to a specific agent and give credit for the activity. 
             am_task_count_non = 0
-
-
-#_--------------------------FIX THIS LATER----------------------
             for task in am_tasks_non['records']:
-                if task['WhatId'] in agent_owns_non["records"]:
-                    am_task_count_non += 1
+                for rec in agent_owns_non["records"]:
+                    if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+                        am_task_count_non += 1
 
 
             total_non_count = agent_task_count_non + am_task_count_non
@@ -211,25 +212,6 @@ def touched_accounts(sf, cutOff, agents_dict):
             # Get the account IDs where the agent has tasks
             agent_account_ids_non = list({task['WhatId'] for task in agent_tasks_non['records']})
             total_non_count = agent_tasks_non["totalSize"]
-
-            # SELECT COUNT()
-            # FROM Task
-            # WHERE (
-            #     (OwnerId = '0054U00000DtldhQAB'
-            #     AND CreatedDate >= 2024-06-01T00:00:00Z
-            #     AND Status = 'Completed'
-            #     AND Account.Type != 'Customer'
-            #     AND (What.Type = 'Account' OR What.Type = 'Opportunity'))
-            #     OR 
-            #     (OwnerId IN ('')
-            #     AND Called_By__c = 'Bryan Edman'
-            #     AND CreatedDate >= 2024-06-01T00:00:00Z
-            #     AND Status = 'Completed'
-            #     AND Account.Type != 'Customer'
-            #     AND (What.Type = 'Account' OR What.Type = 'Opportunity'))
-            # )
-
-
         # --------------------------------------END NON_CUSTOMERS-------------------------------------------------
 
         #---------------------------------------------------START CUSTOMERS----------------------------------------------------------------
@@ -270,9 +252,14 @@ def touched_accounts(sf, cutOff, agents_dict):
 
             am_task_count_cust = 0
 
+            # If agent is assigned to the account then we will count the AM's activity on the account, 
+            # Otherwise only agent activity will be counted. That's the only relationship we can use 
+            # to link AMs with multiple agents to a specific agent and give credit for the activity. 
+            am_task_count_cust = 0
             for task in am_tasks_cust['records']:
-                if task['WhatId'] in agent_owns_cust["records"]:
-                    am_task_count_cust += 1
+                for rec in agent_owns_cust["records"]:
+                    if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+                        am_task_count_cust += 1
 
 
 
@@ -300,6 +287,9 @@ def touched_accounts(sf, cutOff, agents_dict):
             "total_count": total_cust_count + total_non_count,
             "customer_count": total_cust_count,
             "non_customer_count": total_non_count,
+            "ams_count": (total_cust_count + total_non_count) - (agent_task_count_non + agent_task_count_cust),
+            "agent_count_non": agent_task_count_non,
+            "agent_count_cust": agent_task_count_cust,
             "links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in all_links]
         }
 
