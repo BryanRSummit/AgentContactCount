@@ -150,134 +150,107 @@ def touched_accounts(sf, cutOff, agents_dict):
         ids.extend(x["id"] for x in info["accountmanagers"])
         formatted_ids = ','.join(f"'{id}'" for id in ids)
 
-        shares_am = agent_shares_am(agent, am_data)
+
         # --------------------------------------START NON_CUSTOMERS-----------------------------
-        if shares_am:
-            # Query for agent's tasks
-            agent_tasks_non = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE OwnerId = '{agentId}'
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type != 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
-            # Get the account IDs where the agent has tasks
-            agent_account_ids_non = list({task['WhatId'] for task in agent_tasks_non['records']})
 
-            agent_owns_non = sf.query(f"""
-                SELECT Id, OwnerId, Assigned_Admin__c
-                FROM Account
-                WHERE OwnerId = '{agentId}'
-                AND Type != 'Customer'
-            """)
+        # Query for agent's tasks
+        agent_tasks_non = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_non = list({task['WhatId'] for task in agent_tasks_non['records']})
 
-            # Query for account managers' tasks
-            am_tasks_non = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE (OwnerId IN ({amIds}) OR OwnerId = '')
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type != 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
+        agent_owns_non = sf.query(f"""
+            SELECT Id, OwnerId, Assigned_Admin__c
+            FROM Account
+            WHERE OwnerId = '{agentId}'
+            AND Type != 'Customer'
+        """)
 
-
-            agent_task_count_non = agent_tasks_non["totalSize"]
-
-            # If agent is assigned to the account then we will count the AM's activity on the account, 
-            # Otherwise only agent activity will be counted. That's the only relationship we can use 
-            # to link AMs with multiple agents to a specific agent and give credit for the activity. 
-            am_task_count_non = 0
-            for task in am_tasks_non['records']:
-                for rec in agent_owns_non["records"]:
-                    if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
-                        am_task_count_non += 1
+        # Query for account managers' tasks
+        am_tasks_non = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE (OwnerId IN ({amIds}) OR OwnerId = '')
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
 
 
-            total_non_count = agent_task_count_non + am_task_count_non
-        else:
-            # Query for agent's tasks
-            agent_tasks_non = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type != 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
-            # Get the account IDs where the agent has tasks
-            agent_account_ids_non = list({task['WhatId'] for task in agent_tasks_non['records']})
-            total_non_count = agent_tasks_non["totalSize"]
-        # --------------------------------------END NON_CUSTOMERS-------------------------------------------------
+        agent_task_count_non = agent_tasks_non["totalSize"]
 
-        #---------------------------------------------------START CUSTOMERS----------------------------------------------------------------
-        if shares_am:
-            # Query for agent's tasks
-            agent_tasks_cust = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE OwnerId = '{agentId}'
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type = 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
-                        # Get the account IDs where the agent has tasks
-            agent_account_ids_cust = list({task['WhatId'] for task in agent_tasks_cust['records']})
-
-            agent_owns_cust = sf.query(f"""
-                SELECT Id, OwnerId, Assigned_Admin__c
-                FROM Account
-                WHERE OwnerId = '{agentId}'
-                AND Type = 'Customer'
-            """)
-
-            # Query for account managers' tasks
-            am_tasks_cust = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE (OwnerId IN ({amIds}) OR OwnerId = '')
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type = 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
+        # If agent is assigned to the account then we will count the AM's activity on the account, 
+        # Otherwise only agent activity will be counted. That's the only relationship we can use 
+        # to link AMs with multiple agents to a specific agent and give credit for the activity. 
+        am_task_count_non = 0
+        for task in am_tasks_non['records']:
+            for rec in agent_owns_non["records"]:
+                if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+                    am_task_count_non += 1
 
 
-            agent_task_count_cust = agent_tasks_cust["totalSize"]
+        total_non_count = agent_task_count_non + am_task_count_non
 
-            am_task_count_cust = 0
+    # --------------------------------------END NON_CUSTOMERS-------------------------------------------------
 
-            # If agent is assigned to the account then we will count the AM's activity on the account, 
-            # Otherwise only agent activity will be counted. That's the only relationship we can use 
-            # to link AMs with multiple agents to a specific agent and give credit for the activity. 
-            am_task_count_cust = 0
-            for task in am_tasks_cust['records']:
-                for rec in agent_owns_cust["records"]:
-                    if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
-                        am_task_count_cust += 1
+    #---------------------------------------------------START CUSTOMERS----------------------------------------------------------------
+
+        # Query for agent's tasks
+        agent_tasks_cust = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_cust = list({task['WhatId'] for task in agent_tasks_cust['records']})
+
+        agent_owns_cust = sf.query(f"""
+            SELECT Id, OwnerId, Assigned_Admin__c
+            FROM Account
+            WHERE OwnerId = '{agentId}'
+            AND Type = 'Customer'
+        """)
+
+        # Query for account managers' tasks
+        am_tasks_cust = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE (OwnerId IN ({amIds}) OR OwnerId = '')
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+
+        agent_task_count_cust = agent_tasks_cust["totalSize"]
+
+        am_task_count_cust = 0
+
+        # If agent is assigned to the account then we will count the AM's activity on the account, 
+        # Otherwise only agent activity will be counted. That's the only relationship we can use 
+        # to link AMs with multiple agents to a specific agent and give credit for the activity. 
+        am_task_count_cust = 0
+        for task in am_tasks_cust['records']:
+            for rec in agent_owns_cust["records"]:
+                if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+                    am_task_count_cust += 1
 
 
 
-            total_cust_count = agent_task_count_cust + am_task_count_cust
-        else:
-            # Query for agent's tasks
-            agent_tasks_cust = sf.query(f"""
-                SELECT Id, Description, WhatId
-                FROM Task
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Status = 'Completed'
-                AND Account.Type = 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """)
-            # Get the account IDs where the agent has tasks
-            agent_account_ids_cust = list({task['WhatId'] for task in agent_tasks_cust['records']})
-            total_cust_count = agent_tasks_cust["totalSize"]
+        total_cust_count = agent_task_count_cust + am_task_count_cust
 
         #---------------------------------------------------END CUSTOMERS----------------------------------------------------------------
 
