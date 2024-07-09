@@ -129,10 +129,10 @@ def agent_shares_am(agent, am_data):
                 return False
 
 def touched_accounts(sf, cutOff, agents_dict):
-    # # Used to see Object fields
-    # account_metadata = sf.Task.describe()
-    # # Extract field names
-    # field_names = [field['name'] for field in account_metadata['fields']]
+    # Used to see Object fields
+    account_metadata = sf.Task.describe()
+    # Extract field names
+    field_names = [field['name'] for field in account_metadata['fields']]
 
     # Load AM Info to check for multiple agents
     with open('am_ids.json', 'r') as file:
