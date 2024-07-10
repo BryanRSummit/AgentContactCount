@@ -35,8 +35,8 @@ def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
     while attempt < max_attempts:
         try:
             sheet.batch_update([{
-                'range': f'A{start_row}:K{end_row}',
-                'values': [[cell[2] for cell in values[i:i+11]] for i in range(0, len(values), 11)]
+                'range': f'A{start_row}:M{end_row}',
+                'values': [[cell[2] for cell in values[i:i+13]] for i in range(0, len(values), 13)]
             }])
             return
         except APIError as e:
@@ -52,7 +52,6 @@ def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
 
 if __name__ == "__main__":
     start_time = time.time()
-
     sf = sf_login()
 
     # Load the agent_ids
@@ -72,9 +71,7 @@ if __name__ == "__main__":
             "accountmanagers": agent["accountManagers"]
         }
         agents_dict[agent['name']] = info
-        # headers = sheet.row_values(1) 
-        # col = headers.index(agent["Name"]) + 1
-        # sheet.update_cell(2, col, agent["id"])
+
 
 
     # Sales Season Start
@@ -84,13 +81,10 @@ if __name__ == "__main__":
     agent_contact_counts = touched_accounts(sf, cutoff_date, agents_dict)
 
     get_contacts_time = time.time()
-
     
     row = first_empty_row(sheet)
     start_row = row
     headers = sheet.row_values(1)
- 
-
 
     # Prepare batch update
     batch_update = []
@@ -99,15 +93,17 @@ if __name__ == "__main__":
         row_data = [
             (row, headers.index("Date") + 1, today),
             (row, headers.index("Agent") + 1, agent),
-            (row, headers.index("Total Count") + 1, info["total_count"]),
-            (row, headers.index("Customer Count") + 1, info["customer_count"]),
-            (row, headers.index("Non Customer Count") + 1, info["non_customer_count"]),
-            (row, headers.index("Agent Non Count") + 1, info["agent_count_non"]),
+            (row, headers.index("Team Total") + 1, info["total_count"]),
+            (row, headers.index("Team Customer Count") + 1, info["customer_count"]),
+            (row, headers.index("Team Non Customer Count") + 1, info["non_customer_count"]),
+            (row, headers.index("Agent Total Count") + 1, info["non_customer_count"]),
             (row, headers.index("Agent Cust Count") + 1, info["agent_count_cust"]),
+            (row, headers.index("Agent Non Count") + 1, info["agent_count_non"]),
             (row, headers.index("AMs Total Count") + 1, info["ams_total_count"]),
-            (row, headers.index("AMs Non Count") + 1, info["am_non_count"]),
             (row, headers.index("AMs Cust Count") + 1, info["am_cust_count"]),
-            (row, headers.index("Links") + 1, ", ".join(info["links"]))
+            (row, headers.index("AMs Non Count") + 1, info["am_non_count"]),
+            (row, headers.index("Customer Links") + 1, ", ".join(info["customer_links"])),
+            (row, headers.index("Non-Customer Links") + 1, ", ".join(info["non_cust_links"]))
         ]
 
 

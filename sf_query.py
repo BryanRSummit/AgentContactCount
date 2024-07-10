@@ -129,10 +129,10 @@ def agent_shares_am(agent, am_data):
                 return False
 
 def touched_accounts(sf, cutOff, agents_dict):
-    # Used to see Object fields
-    account_metadata = sf.Account.describe()
-    # Extract field names
-    field_names = [{"name": field['name'], "label": field["label"]} for field in account_metadata['fields']]
+    # # Used to see Object fields
+    # account_metadata = sf.Account.describe()
+    # # Extract field names
+    # field_names = [{"name": field['name'], "label": field["label"]} for field in account_metadata['fields']]
 
     # Load AM Info to check for multiple agents
     with open('am_ids.json', 'r') as file:
@@ -165,7 +165,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
         # Get the account IDs where the agent has tasks
-        agent_account_ids_non = list({task['WhatId'] for task in agent_tasks_non['records']})
+        agent_account_ids_non = list({task["WhatId"] for task in agent_tasks_non["records"]})
 
         agent_owns_non = sf.query(f"""
             SELECT Id, OwnerId, Assigned_Admin__c
@@ -185,6 +185,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
+        am_account_ids_non = list({task["WhatId"] for task in am_tasks_non["records"]})
 
         agent_task_count_non = agent_tasks_non["totalSize"]
 
@@ -235,6 +236,8 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
+        am_account_ids_cust = list({task["WhatId"] for task in am_tasks_cust["records"]})
+
 
         agent_task_count_cust = agent_tasks_cust["totalSize"]
 
@@ -255,19 +258,23 @@ def touched_accounts(sf, cutOff, agents_dict):
 
         #---------------------------------------------------END CUSTOMERS----------------------------------------------------------------
 
-        all_links = agent_account_ids_non + agent_account_ids_cust
+        cust_links = list(set(agent_account_ids_cust + am_account_ids_cust))
+        non_cust_links = list(set(agent_account_ids_non + am_account_ids_non))
         am_total = (total_cust_count + total_non_count) - (agent_task_count_non + agent_task_count_cust)
+        agent_total = (agent_task_count_cust + agent_task_count_non)
 
         agent_counts[agent] = {
             "total_count": total_cust_count + total_non_count,
             "customer_count": total_cust_count,
             "non_customer_count": total_non_count,
+            "agent_total_count": agent_total,
             "ams_total_count": am_total,
             "am_non_count": am_task_count_non,
             "am_cust_count": am_task_count_cust,
             "agent_count_non": agent_task_count_non,
             "agent_count_cust": agent_task_count_cust,
-            "links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in all_links]
+            "customer_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in cust_links],
+            "non_cust_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in non_cust_links]
         }
 
 
