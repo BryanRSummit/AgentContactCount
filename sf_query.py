@@ -134,12 +134,11 @@ def touched_accounts(sf, cutOff, agents_dict):
     # # Extract field names
     # field_names = [{"name": field['name'], "label": field["label"]} for field in account_metadata['fields']]
 
-    # Load AM Info to check for multiple agents
-    with open('am_ids.json', 'r') as file:
-        am_data = json.load(file)
+    # # Load AM Info to check for multiple agents
+    # with open('am_ids.json', 'r') as file:
+    #     am_data = json.load(file)
 
     formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
     agent_counts = {}
     for agent, info in agents_dict.items():
@@ -187,7 +186,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
-        #am_account_ids_non = list(task["WhatId"] for task in am_tasks_non["records"])
+        #only take ids that are on accounts assigned to the agent
         am_account_ids_non = [id["WhatId"] for id in am_tasks_non["records"] if id["WhatId"] in agent_owns_ids_non]
 
 
@@ -241,14 +240,8 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
-        #am_account_ids_cust = list(task["WhatId"] for task in am_tasks_cust["records"])
+        #only take ids that are on accounts assigned to the agent
         am_account_ids_cust = [id["WhatId"] for id in am_tasks_cust["records"] if id["WhatId"] in agent_owns_ids_cust]
-
-        # #remove any Ids not owned by agent
-        # for id in am_account_ids_cust:
-        #     if id not in agent_owns_ids_cust:
-        #         am_account_ids_cust.remove(id)
-
 
         agent_task_count_cust = agent_tasks_cust["totalSize"]
 
