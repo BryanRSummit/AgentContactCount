@@ -96,7 +96,7 @@ if __name__ == "__main__":
             (row, headers.index("Team Total") + 1, info["total_count"]),
             (row, headers.index("Team Customer Count") + 1, info["customer_count"]),
             (row, headers.index("Team Non Customer Count") + 1, info["non_customer_count"]),
-            (row, headers.index("Agent Total Count") + 1, info["non_customer_count"]),
+            (row, headers.index("Agent Total Count") + 1, info["agent_total_count"]),
             (row, headers.index("Agent Cust Count") + 1, info["agent_count_cust"]),
             (row, headers.index("Agent Non Count") + 1, info["agent_count_non"]),
             (row, headers.index("AMs Total Count") + 1, info["ams_total_count"]),
@@ -105,6 +105,20 @@ if __name__ == "__main__":
             (row, headers.index("Customer Links") + 1, ", ".join(info["customer_links"])),
             (row, headers.index("Non-Customer Links") + 1, ", ".join(info["non_cust_links"]))
         ]
+
+        #     agent_counts[agent] = {
+        #     "total_count": total_cust_count + total_non_count,
+        #     "customer_count": total_cust_count,
+        #     "non_customer_count": total_non_count,
+        #     "agent_total_count": agent_total,
+        #     "ams_total_count": am_total,
+        #     "am_non_count": am_task_count_non,
+        #     "am_cust_count": am_task_count_cust,
+        #     "agent_count_non": agent_task_count_non,
+        #     "agent_count_cust": agent_task_count_cust,
+        #     "customer_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in cust_links],
+        #     "non_cust_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in non_cust_links]
+        # }
 
 
         batch_update.extend(row_data)

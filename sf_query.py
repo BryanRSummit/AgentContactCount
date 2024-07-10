@@ -228,7 +228,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             WHERE OwnerId = '{agentId}'
             AND Type = 'Customer'
         """)
-        agent_owns_ids_cust = list(x["Id"] for x in agent_owns_non["records"])
+        agent_owns_ids_cust = list(x["Id"] for x in agent_owns_cust["records"])
 
         # Query for account managers' tasks
         am_tasks_cust = sf.query(f"""
