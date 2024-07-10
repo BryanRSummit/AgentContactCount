@@ -1,7 +1,7 @@
 from dateutil import parser
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass
-import re
+import json
 
 @dataclass
 class Agent:
@@ -120,59 +120,167 @@ def had_activity(sf, account, cutOff):
         
     return contacted
 
-
+def agent_shares_am(agent, am_data):
+    for am in am_data:
+        for _agent in am["agents"]:
+            if _agent["name"] == agent:
+                if len(am["agents"]) > 1:
+                    return True
+                return False
 
 def touched_accounts(sf, cutOff, agents_dict):
-    # Used to see Object fields
-    account_metadata = sf.Task.describe()
-    # Extract field names
-    field_names = [field['name'] for field in account_metadata['fields']]
-    formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # # Used to see Object fields
+    # account_metadata = sf.Account.describe()
+    # # Extract field names
+    # field_names = [{"name": field['name'], "label": field["label"]} for field in account_metadata['fields']]
 
+    # # Load AM Info to check for multiple agents
+    # with open('am_ids.json', 'r') as file:
+    #     am_data = json.load(file)
+
+    formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     agent_counts = {}
     for agent, info in agents_dict.items():
-        ids = [info["id"]]
+        agentId = info["id"]
+        amIds = ",".join(f"'{x['id']}'" for x in info["accountmanagers"])
+        if amIds == '':
+            amIds = "''"
+        ids = [agentId]
         ids.extend(x["id"] for x in info["accountmanagers"])
         formatted_ids = ','.join(f"'{id}'" for id in ids)
-        countNonCustQuery = f"""
-                SELECT COUNT()
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Account.Type != 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-                """
-        
-        countCustQuery = f"""
-                SELECT COUNT()
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND Account.Type = 'Customer'
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-                """
-        
-        linkQuery = f"""
-                SELECT 
-                    What.Id,
-                    What.Name,
-                    What.Type
-                FROM Task  
-                WHERE OwnerId IN ({formatted_ids})
-                AND CreatedDate >= {formatted_date}
-                AND (What.Type = 'Account' OR What.Type = 'Opportunity')
-            """
 
-        link_records = sf.query(linkQuery)["records"]
-        non_cust_record_count = sf.query(countNonCustQuery)['totalSize']
-        cust_record_count = sf.query(countCustQuery)['totalSize']
+
+        # --------------------------------------START NON_CUSTOMERS-----------------------------
+
+        # Query for agent's tasks
+        agent_tasks_non = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_non = list(task["WhatId"] for task in agent_tasks_non["records"])
+
+        agent_owns_non = sf.query(f"""
+            SELECT Id, OwnerId, Assigned_Admin__c
+            FROM Account
+            WHERE OwnerId = '{agentId}'
+            AND Type != 'Customer'
+        """)
+        
+        agent_owns_ids_non = list(x["Id"] for x in agent_owns_non["records"])
+
+        # Query for account managers' tasks
+        am_tasks_non = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId IN ({amIds})
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type != 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+        #only take ids that are on accounts assigned to the agent
+        am_account_ids_non = [id["WhatId"] for id in am_tasks_non["records"] if id["WhatId"] in agent_owns_ids_non]
+
+
+        agent_task_count_non = agent_tasks_non["totalSize"]
+
+        # If agent is assigned to the account then we will count the AM's activity on the account, 
+        # Otherwise only agent activity will be counted. That's the only relationship we can use 
+        # to link AMs with multiple agents to a specific agent and give credit for the activity. 
+        am_task_count_non = 0
+        for task in am_tasks_non['records']:
+            for accnt in agent_owns_non["records"]:
+                if task['WhatId'] == accnt["Id"] and accnt["OwnerId"] == agentId:
+                    am_task_count_non += 1
+
+
+        total_non_count = agent_task_count_non + am_task_count_non
+
+    # --------------------------------------END NON_CUSTOMERS-------------------------------------------------
+
+    #---------------------------------------------------START CUSTOMERS----------------------------------------------------------------
+
+        # Query for agent's tasks
+        agent_tasks_cust = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId = '{agentId}'
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+        # Get the account IDs where the agent has tasks
+        agent_account_ids_cust = list({task['WhatId'] for task in agent_tasks_cust['records']})
+
+        agent_owns_cust = sf.query(f"""
+            SELECT Id, OwnerId, Assigned_Admin__c
+            FROM Account
+            WHERE OwnerId = '{agentId}'
+            AND Type = 'Customer'
+        """)
+        agent_owns_ids_cust = list(x["Id"] for x in agent_owns_cust["records"])
+
+        # Query for account managers' tasks
+        am_tasks_cust = sf.query(f"""
+            SELECT Id, Description, WhatId
+            FROM Task
+            WHERE OwnerId IN ({amIds})
+            AND CreatedDate >= {formatted_date}
+            AND Status = 'Completed'
+            AND Account.Type = 'Customer'
+            AND (What.Type = 'Account' OR What.Type = 'Opportunity')
+        """)
+
+        #only take ids that are on accounts assigned to the agent
+        am_account_ids_cust = [id["WhatId"] for id in am_tasks_cust["records"] if id["WhatId"] in agent_owns_ids_cust]
+
+        agent_task_count_cust = agent_tasks_cust["totalSize"]
+
+        am_task_count_cust = 0
+
+        # If agent is assigned to the account then we will count the AM's activity on the account, 
+        # Otherwise only agent activity will be counted. That's the only relationship we can use 
+        # to link AMs with multiple agents to a specific agent and give credit for the activity. 
+        am_task_count_cust = 0
+        for task in am_tasks_cust['records']:
+            for rec in agent_owns_cust["records"]:
+                if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+                    am_task_count_cust += 1
+
+
+
+        total_cust_count = agent_task_count_cust + am_task_count_cust
+
+        #---------------------------------------------------END CUSTOMERS----------------------------------------------------------------
+
+        cust_links = list(set(agent_account_ids_cust + am_account_ids_cust))
+        non_cust_links = list(set(agent_account_ids_non + am_account_ids_non))
+        am_total = (total_cust_count + total_non_count) - (agent_task_count_non + agent_task_count_cust)
+        agent_total = (agent_task_count_cust + agent_task_count_non)
+
         agent_counts[agent] = {
-            "total_count": non_cust_record_count + cust_record_count,
-            "customer_count": cust_record_count,
-            "non_customer_count": non_cust_record_count,
-            "links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x['What']['Id']}/view" for x in link_records]
+            "total_count": total_cust_count + total_non_count,
+            "customer_count": total_cust_count,
+            "non_customer_count": total_non_count,
+            "agent_total_count": agent_total,
+            "ams_total_count": am_total,
+            "am_non_count": am_task_count_non,
+            "am_cust_count": am_task_count_cust,
+            "agent_count_non": agent_task_count_non,
+            "agent_count_cust": agent_task_count_cust,
+            "customer_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in cust_links],
+            "non_cust_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in non_cust_links]
         }
+
 
     return agent_counts
 
