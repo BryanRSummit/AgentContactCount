@@ -165,7 +165,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
         # Get the account IDs where the agent has tasks
-        agent_account_ids_non = list({task["WhatId"] for task in agent_tasks_non["records"]})
+        agent_account_ids_non = list(task["WhatId"] for task in agent_tasks_non["records"])
 
         agent_owns_non = sf.query(f"""
             SELECT Id, OwnerId, Assigned_Admin__c
@@ -173,6 +173,8 @@ def touched_accounts(sf, cutOff, agents_dict):
             WHERE OwnerId = '{agentId}'
             AND Type != 'Customer'
         """)
+        
+        agent_owns_ids_non = list(x["Id"] for x in agent_owns_non["records"])
 
         # Query for account managers' tasks
         am_tasks_non = sf.query(f"""
@@ -185,7 +187,9 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
-        am_account_ids_non = list({task["WhatId"] for task in am_tasks_non["records"]})
+        #am_account_ids_non = list(task["WhatId"] for task in am_tasks_non["records"])
+        am_account_ids_non = [id["WhatId"] for id in am_tasks_non["records"] if id["WhatId"] in agent_owns_ids_non]
+
 
         agent_task_count_non = agent_tasks_non["totalSize"]
 
@@ -194,8 +198,8 @@ def touched_accounts(sf, cutOff, agents_dict):
         # to link AMs with multiple agents to a specific agent and give credit for the activity. 
         am_task_count_non = 0
         for task in am_tasks_non['records']:
-            for rec in agent_owns_non["records"]:
-                if task['WhatId'] == rec["Id"] and rec["OwnerId"] == agentId:
+            for accnt in agent_owns_non["records"]:
+                if task['WhatId'] == accnt["Id"] and accnt["OwnerId"] == agentId:
                     am_task_count_non += 1
 
 
@@ -224,6 +228,7 @@ def touched_accounts(sf, cutOff, agents_dict):
             WHERE OwnerId = '{agentId}'
             AND Type = 'Customer'
         """)
+        agent_owns_ids_cust = list(x["Id"] for x in agent_owns_non["records"])
 
         # Query for account managers' tasks
         am_tasks_cust = sf.query(f"""
@@ -236,7 +241,13 @@ def touched_accounts(sf, cutOff, agents_dict):
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
         """)
 
-        am_account_ids_cust = list({task["WhatId"] for task in am_tasks_cust["records"]})
+        #am_account_ids_cust = list(task["WhatId"] for task in am_tasks_cust["records"])
+        am_account_ids_cust = [id["WhatId"] for id in am_tasks_cust["records"] if id["WhatId"] in agent_owns_ids_cust]
+
+        # #remove any Ids not owned by agent
+        # for id in am_account_ids_cust:
+        #     if id not in agent_owns_ids_cust:
+        #         am_account_ids_cust.remove(id)
 
 
         agent_task_count_cust = agent_tasks_cust["totalSize"]
