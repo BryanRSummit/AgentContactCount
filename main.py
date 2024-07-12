@@ -6,8 +6,7 @@ import json
 from datetime import datetime
 import time
 from gspread.exceptions import APIError
-import psycopg2
-from psycopg2 import sql
+from db_connect import connect_to_db, insert_data_to_db
 
 
 def first_empty_row(sheet):
@@ -81,6 +80,8 @@ if __name__ == "__main__":
 
     # Prepare batch update
     batch_update = []
+    #going to db
+    db_data = []
 
     for agent, info in agent_contact_counts.items():
         row_data = [
@@ -101,10 +102,25 @@ if __name__ == "__main__":
 
 
         batch_update.extend(row_data)
+        
+        db_row = (
+            today, agent, info["total_count"], info["customer_count"], info["non_customer_count"],
+            info["agent_total_count"], info["agent_count_cust"], info["agent_count_non"],
+            info["ams_total_count"], info["am_cust_count"], info["am_non_count"],
+            ", ".join(info["customer_links"]), ", ".join(info["non_cust_links"])
+        )
+        db_data.append(db_row)
+        
         row += 1
 
     # Perform batch update with retry
     update_sheet_with_retry(sheet, batch_update, start_row, row)
+
+    # Insert data into PostgreSQL database
+    conn = connect_to_db()
+    if conn:
+        insert_data_to_db(conn, db_data)
+        conn.close()
 
     update_sheet_time = time.time()
 
@@ -112,4 +128,4 @@ if __name__ == "__main__":
     print(f"Total execution Time: {update_sheet_time - start_time:.4f} seconds.")
     print(f"Login Time: {login_time - start_time:.4f} seconds.")
     print(f"Get Contacts Time: {get_contacts_time - login_time:.4f} seconds.")
-    print(f"Update Sheet Time: {update_sheet_time - get_contacts_time:.4f} seconds.")
+    print(f"Update Sheet and DB Time: {update_sheet_time - get_contacts_time:.4f} seconds.")

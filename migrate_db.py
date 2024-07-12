@@ -1,8 +1,8 @@
 import psycopg2
 from psycopg2 import sql
 import os
-import json
 from cryptography.fernet import Fernet
+import json
 
 def connect_to_db():
     cwd = os.getcwd()
@@ -36,26 +36,44 @@ def connect_to_db():
     except (Exception, psycopg2.Error) as error:
         print("Error while connecting to PostgreSQL", error)
         return None
-    
 
-def insert_data_to_db(conn, data):
+def create_table(conn):
     try:
         cursor = conn.cursor()
-        insert_query = sql.SQL("""
-            INSERT INTO agent_contacts (
-                date, agent, team_total, team_customer_count, team_non_customer_count,
-                agent_total_count, agent_count_cust, agent_count_non,
-                ams_total_count, am_cust_count, am_non_count,
-                customer_links, non_customer_links
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        
+        create_table_query = sql.SQL("""
+            CREATE TABLE IF NOT EXISTS agent_contacts (
+                id SERIAL PRIMARY KEY,
+                date DATE NOT NULL,
+                agent VARCHAR(255) NOT NULL,
+                team_total INTEGER,
+                team_customer_count INTEGER,
+                team_non_customer_count INTEGER,
+                agent_total_count INTEGER,
+                agent_count_cust INTEGER,
+                agent_count_non INTEGER,
+                ams_total_count INTEGER,
+                am_cust_count INTEGER,
+                am_non_count INTEGER,
+                customer_links TEXT,
+                non_customer_links TEXT
             )
         """)
-        cursor.executemany(insert_query, data)
+        
+        cursor.execute(create_table_query)
         conn.commit()
-        print("Data inserted successfully")
+        print("Table 'agent_contacts' created successfully")
     except (Exception, psycopg2.Error) as error:
-        print("Error while inserting data into PostgreSQL", error)
+        print("Error while creating table", error)
     finally:
         if cursor:
             cursor.close()
+
+def main():
+    conn = connect_to_db()
+    if conn:
+        create_table(conn)
+        conn.close()
+
+if __name__ == "__main__":
+    main()
