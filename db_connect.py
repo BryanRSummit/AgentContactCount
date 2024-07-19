@@ -63,8 +63,12 @@ def insert_data_to_db(conn, data):
 def get_rows_for_agent(conn, agent):
     try:
         cursor = conn.cursor()
+        # Only retrieve the most recent row for agent to compare the value
         select_query = sql.SQL("""
-            SELECT * FROM agent_contacts WHERE agent = %s;
+            SELECT * FROM agent_contacts
+            WHERE agent = %s
+            ORDER BY date DESC
+            LIMIT 1
         """)
         cursor.execute(select_query, (agent,))
         rows = cursor.fetchall()

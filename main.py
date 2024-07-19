@@ -28,7 +28,7 @@ def update_sheet_with_retry(sheet, values, start_row, end_row, max_attempts=5):
         try:
             sheet.batch_update([{
                 'range': f'A{start_row}:M{end_row}',
-                'values': [[cell[2] for cell in values[i:i+13]] for i in range(0, len(values), 13)]
+                'values': [[cell[2] for cell in values[i:i+22]] for i in range(0, len(values), 22)]
             }])
             return
         except APIError as e:
@@ -87,19 +87,40 @@ if __name__ == "__main__":
 
     for agent, info in agent_contact_counts.items():
         if conn:
-            agent_rows = get_rows_for_agent(conn, agent)
+            agent_rows = get_rows_for_agent(conn, agent)[0]
+            last_row = {
+                "team_total": agent_rows[3],
+                "team_cust_count": agent_rows[4],
+                "team_non": agent_rows[5],
+                "agent_total": agent_rows[6],
+                "agent_cust": agent_rows[7],
+                "agent_non": agent_rows[8],
+                "am_total": agent_rows[9],
+                "am_cust": agent_rows[10],
+                "am_non": agent_rows[11]
+            }
         row_data = [
             (row, headers.index("Date") + 1, today),
             (row, headers.index("Agent") + 1, agent),
             (row, headers.index("Team Total") + 1, info["total_count"]),
+            (row, headers.index("Team Total Delta") + 1, (info["total_count"] - last_row["team_total"])),
             (row, headers.index("Team Customer Count") + 1, info["customer_count"]),
+
             (row, headers.index("Team Non Customer Count") + 1, info["non_customer_count"]),
+
             (row, headers.index("Agent Total Count") + 1, info["agent_total_count"]),
+
             (row, headers.index("Agent Cust Count") + 1, info["agent_count_cust"]),
+
             (row, headers.index("Agent Non Count") + 1, info["agent_count_non"]),
+
             (row, headers.index("AMs Total Count") + 1, info["ams_total_count"]),
+
             (row, headers.index("AMs Cust Count") + 1, info["am_cust_count"]),
+
             (row, headers.index("AMs Non Count") + 1, info["am_non_count"]),
+
+            
             (row, headers.index("Customer Links") + 1, ", ".join(info["customer_links"])),
             (row, headers.index("Non-Customer Links") + 1, ", ".join(info["non_cust_links"]))
         ]
