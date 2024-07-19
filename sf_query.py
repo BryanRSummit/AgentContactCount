@@ -138,7 +138,8 @@ def touched_accounts(sf, cutOff, agents_dict):
     # with open('am_ids.json', 'r') as file:
     #     am_data = json.load(file)
 
-    formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
+    #formatted_date = cutOff.strftime("%Y-%m-%dT%H:%M:%SZ")
+    formatted_date = cutOff.strftime("%Y-%m-%d")
 
     agent_counts = {}
     for agent, info in agents_dict.items():
@@ -155,10 +156,10 @@ def touched_accounts(sf, cutOff, agents_dict):
 
         # Query for agent's tasks
         agent_tasks_non = sf.query(f"""
-            SELECT Id, Description, WhatId
+            SELECT Id, Description, WhatId, CreatedDate, ActivityDate
             FROM Task
             WHERE OwnerId = '{agentId}'
-            AND CreatedDate >= {formatted_date}
+            AND ActivityDate >= {formatted_date}
             AND Status = 'Completed'
             AND Account.Type != 'Customer'
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
@@ -177,10 +178,10 @@ def touched_accounts(sf, cutOff, agents_dict):
 
         # Query for account managers' tasks
         am_tasks_non = sf.query(f"""
-            SELECT Id, Description, WhatId
+            SELECT Id, Description, WhatId, CreatedDate, ActivityDate
             FROM Task
             WHERE OwnerId IN ({amIds})
-            AND CreatedDate >= {formatted_date}
+            AND ActivityDate >= {formatted_date}
             AND Status = 'Completed'
             AND Account.Type != 'Customer'
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
@@ -210,10 +211,10 @@ def touched_accounts(sf, cutOff, agents_dict):
 
         # Query for agent's tasks
         agent_tasks_cust = sf.query(f"""
-            SELECT Id, Description, WhatId
+            SELECT Id, Description, WhatId, CreatedDate, ActivityDate
             FROM Task
             WHERE OwnerId = '{agentId}'
-            AND CreatedDate >= {formatted_date}
+            AND ActivityDate >= {formatted_date}
             AND Status = 'Completed'
             AND Account.Type = 'Customer'
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')
@@ -231,10 +232,10 @@ def touched_accounts(sf, cutOff, agents_dict):
 
         # Query for account managers' tasks
         am_tasks_cust = sf.query(f"""
-            SELECT Id, Description, WhatId
+            SELECT Id, Description, WhatId, CreatedDate, ActivityDate
             FROM Task
             WHERE OwnerId IN ({amIds})
-            AND CreatedDate >= {formatted_date}
+            AND ActivityDate >= {formatted_date}
             AND Status = 'Completed'
             AND Account.Type = 'Customer'
             AND (What.Type = 'Account' OR What.Type = 'Opportunity')

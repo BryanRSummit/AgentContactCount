@@ -3,18 +3,10 @@ from sf_query import touched_accounts
 from sheets_login import sheets_login
 from dateutil import parser
 import json
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-import base64
-from googleapiclient.errors import HttpError
-import pandas as pd
 from datetime import datetime
 import time
 from gspread.exceptions import APIError
+from db_connect import connect_to_db, insert_data_to_db
 
 
 def first_empty_row(sheet):
@@ -75,7 +67,7 @@ if __name__ == "__main__":
 
 
     # Sales Season Start
-    cutoff_date = parser.parse("6-1-24")
+    cutoff_date = parser.parse("2024-6-1")
     #today = str(datetime.today())
     today = datetime.today().strftime("%Y-%m-%d")
     agent_contact_counts = touched_accounts(sf, cutoff_date, agents_dict)
@@ -88,6 +80,8 @@ if __name__ == "__main__":
 
     # Prepare batch update
     batch_update = []
+    #going to db
+    db_data = []
 
     for agent, info in agent_contact_counts.items():
         row_data = [
@@ -106,26 +100,26 @@ if __name__ == "__main__":
             (row, headers.index("Non-Customer Links") + 1, ", ".join(info["non_cust_links"]))
         ]
 
-        #     agent_counts[agent] = {
-        #     "total_count": total_cust_count + total_non_count,
-        #     "customer_count": total_cust_count,
-        #     "non_customer_count": total_non_count,
-        #     "agent_total_count": agent_total,
-        #     "ams_total_count": am_total,
-        #     "am_non_count": am_task_count_non,
-        #     "am_cust_count": am_task_count_cust,
-        #     "agent_count_non": agent_task_count_non,
-        #     "agent_count_cust": agent_task_count_cust,
-        #     "customer_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in cust_links],
-        #     "non_cust_links": [f"https://reddsummit.lightning.force.com/lightning/r/Account/{x}/view" for x in non_cust_links]
-        # }
-
 
         batch_update.extend(row_data)
+        
+        db_row = (
+            today, agent, info["total_count"], info["customer_count"], info["non_customer_count"],
+            info["agent_total_count"], info["agent_count_cust"], info["agent_count_non"],
+            info["ams_total_count"], info["am_cust_count"], info["am_non_count"]
+        )
+        db_data.append(db_row)
+        
         row += 1
 
     # Perform batch update with retry
     update_sheet_with_retry(sheet, batch_update, start_row, row)
+
+    # Insert data into PostgreSQL database
+    conn = connect_to_db()
+    if conn:
+        insert_data_to_db(conn, db_data)
+        conn.close()
 
     update_sheet_time = time.time()
 
@@ -133,4 +127,4 @@ if __name__ == "__main__":
     print(f"Total execution Time: {update_sheet_time - start_time:.4f} seconds.")
     print(f"Login Time: {login_time - start_time:.4f} seconds.")
     print(f"Get Contacts Time: {get_contacts_time - login_time:.4f} seconds.")
-    print(f"Update Sheet Time: {update_sheet_time - get_contacts_time:.4f} seconds.")
+    print(f"Update Sheet and DB Time: {update_sheet_time - get_contacts_time:.4f} seconds.")
