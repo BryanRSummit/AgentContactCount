@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
 
     # Sales Season Start
-    cutoff_date = parser.parse("6-1-24")
+    cutoff_date = parser.parse("2024-6-1")
     #today = str(datetime.today())
     today = datetime.today().strftime("%Y-%m-%d")
     agent_contact_counts = touched_accounts(sf, cutoff_date, agents_dict)
