@@ -21,7 +21,7 @@ def connect_to_db():
 
     # Decrypt the password and token
     encrypted_password = creds['encrypted_password'].encode('utf-8')
-    encrypted_host = creds["encrypted_sec_token"].encode('utf-8')
+    encrypted_host = creds["encrypted_host"].encode('utf-8')
     decrypted_password = cipher_suite.decrypt(encrypted_password).decode('utf-8')
     decrypted_host = cipher_suite.decrypt(encrypted_host).decode('utf-8')
 
@@ -45,10 +45,9 @@ def insert_data_to_db(conn, data):
             INSERT INTO agent_contacts (
                 date, agent, team_total, team_customer_count, team_non_customer_count,
                 agent_total_count, agent_count_cust, agent_count_non,
-                ams_total_count, am_cust_count, am_non_count,
-                customer_links, non_customer_links
+                ams_total_count, am_cust_count, am_non_count
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """)
         cursor.executemany(insert_query, data)

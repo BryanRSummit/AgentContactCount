@@ -14,12 +14,12 @@ if __name__ == "__main__":
         db_creds = json.load(f)
 
     # Encrypt the password
-    encrypted_password = cipher_suite.encrypt(db_creds['password'].encode('utf-8'))
     encrypted_host = cipher_suite.encrypt(db_creds['host'].encode('utf-8'))
-
+    encrypted_password = cipher_suite.encrypt(db_creds['password'].encode('utf-8'))
+    
     # Store the encrypted password and key (in a secure location)
     encrypted_credentials = {
-        "encrypted_host": encrypted_password.decode('utf-8'),
+        "encrypted_host": encrypted_host.decode('utf-8'),
         "database": "postgres",
         "user": "postgres",
         "encrypted_password": encrypted_password.decode('utf-8')

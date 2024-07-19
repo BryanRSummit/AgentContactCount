@@ -106,8 +106,7 @@ if __name__ == "__main__":
         db_row = (
             today, agent, info["total_count"], info["customer_count"], info["non_customer_count"],
             info["agent_total_count"], info["agent_count_cust"], info["agent_count_non"],
-            info["ams_total_count"], info["am_cust_count"], info["am_non_count"],
-            ", ".join(info["customer_links"]), ", ".join(info["non_cust_links"])
+            info["ams_total_count"], info["am_cust_count"], info["am_non_count"]
         )
         db_data.append(db_row)
         

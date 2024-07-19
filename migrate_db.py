@@ -21,7 +21,7 @@ def connect_to_db():
 
     # Decrypt the password and token
     encrypted_password = creds['encrypted_password'].encode('utf-8')
-    encrypted_host = creds["encrypted_sec_token"].encode('utf-8')
+    encrypted_host = creds["encrypted_host"].encode('utf-8')
     decrypted_password = cipher_suite.decrypt(encrypted_password).decode('utf-8')
     decrypted_host = cipher_suite.decrypt(encrypted_host).decode('utf-8')
 
@@ -54,9 +54,7 @@ def create_table(conn):
                 agent_count_non INTEGER,
                 ams_total_count INTEGER,
                 am_cust_count INTEGER,
-                am_non_count INTEGER,
-                customer_links TEXT,
-                non_customer_links TEXT
+                am_non_count INTEGER
             )
         """)
         
