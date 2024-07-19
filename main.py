@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 import time
 from gspread.exceptions import APIError
-from db_connect import connect_to_db, insert_data_to_db
+from db_connect import connect_to_db, insert_data_to_db, get_rows_for_agent
 
 
 def first_empty_row(sheet):
@@ -50,7 +50,9 @@ if __name__ == "__main__":
     with open('agent_ids.json', 'r') as file:
         agents_data = json.load(file)
 
+    #get connected to everything
     sheet = sheets_login()
+    conn = connect_to_db()
 
     login_time = time.time()
 
@@ -84,6 +86,8 @@ if __name__ == "__main__":
     db_data = []
 
     for agent, info in agent_contact_counts.items():
+        if conn:
+            agent_rows = get_rows_for_agent(conn, agent)
         row_data = [
             (row, headers.index("Date") + 1, today),
             (row, headers.index("Agent") + 1, agent),
@@ -116,7 +120,7 @@ if __name__ == "__main__":
     update_sheet_with_retry(sheet, batch_update, start_row, row)
 
     # Insert data into PostgreSQL database
-    conn = connect_to_db()
+    
     if conn:
         insert_data_to_db(conn, db_data)
         conn.close()

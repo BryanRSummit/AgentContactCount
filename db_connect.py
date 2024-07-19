@@ -58,3 +58,19 @@ def insert_data_to_db(conn, data):
     finally:
         if cursor:
             cursor.close()
+
+
+def get_rows_for_agent(conn, agent):
+    try:
+        cursor = conn.cursor()
+        select_query = sql.SQL("""
+            SELECT * FROM agent_contacts WHERE agent = %s;
+        """)
+        cursor.execute(select_query, (agent,))
+        rows = cursor.fetchall()
+        return rows
+    except (Exception, psycopg2.Error) as error:
+        print("Error while retrieving data from PostgreSQL", error)
+    finally:
+        if cursor:
+            cursor.close()
