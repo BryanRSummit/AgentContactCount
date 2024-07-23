@@ -45,9 +45,11 @@ def insert_data_to_db(conn, data):
             INSERT INTO agent_contacts (
                 date, agent, team_total, team_customer_count, team_non_customer_count,
                 agent_total_count, agent_count_cust, agent_count_non,
-                ams_total_count, am_cust_count, am_non_count
+                ams_total_count, am_cust_count, am_non_count, team_delta, team_cust_delta,
+                team_non_delta, agent_total_delta, agent_cust_delta, agent_non_delta, am_total_delta,
+                am_cust_delta, am_non_delta  
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """)
         cursor.executemany(insert_query, data)
@@ -55,6 +57,26 @@ def insert_data_to_db(conn, data):
         print("Data inserted successfully")
     except (Exception, psycopg2.Error) as error:
         print("Error while inserting data into PostgreSQL", error)
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def get_agent_last_row(conn, agent):
+    try:
+        cursor = conn.cursor()
+        # Only retrieve the most recent row for agent to compare the value
+        select_query = sql.SQL("""
+            SELECT * FROM agent_contacts
+            WHERE agent = %s
+            ORDER BY date DESC
+            LIMIT 1
+        """)
+        cursor.execute(select_query, (agent,))
+        rows = cursor.fetchall()
+        return rows
+    except (Exception, psycopg2.Error) as error:
+        print("Error while retrieving data from PostgreSQL", error)
     finally:
         if cursor:
             cursor.close()
