@@ -136,8 +136,8 @@ if __name__ == "__main__":
             (row, headers.index("AMs Non Delta") + 1, deltas["am_non_delta"]),
 
 
-            (row, headers.index("Customer Links") + 1, ", ".join(info["customer_links"])),
-            (row, headers.index("Non-Customer Links") + 1, ", ".join(info["non_cust_links"]))
+            (row, headers.index("Customer Links") + 1, "Ran Out of Room!"),
+            (row, headers.index("Non-Customer Links") + 1, "Ran Out of Room!")
         ]
 
 
